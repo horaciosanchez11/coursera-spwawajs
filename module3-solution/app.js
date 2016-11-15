@@ -9,12 +9,10 @@ function FoundItems() {
   var ddo = {
     templateUrl: 'foundItems.html',
     scope: {
-      items: '<',
-      onRemove: '&',
-      myTitle: '@title',
-      badRemove: "="
+      found: '<',
+      onRemove: '&'
     },
-    controller: NarrowItDownController,
+    controller: FoundItemsDirectiveController,
     controllerAs: 'list',
     bindToController: true
   };
@@ -22,48 +20,59 @@ function FoundItems() {
   return ddo;
 }
 
+function FoundItemsDirectiveController() {
+  var list = this;
+}
+
 
 NarrowItDownController.$inject = ['MenuSearchService'];
 function NarrowItDownController(MenuSearchService) {
   var list = this;
-  var menu_items = [];
 
-  list.search = function(searchTerm) {
-    console.log(searchTerm);
+  list.searchTerm = "";
+
+  list.search = function() {
+    var promise = MenuSearchService.getMatchedMenuItems(list.searchTerm);
+    console.log("Search: ", list.searchTerm);
+    promise.then(function(response) {
+      list.found = response;
+      if (response.length === 0) {
+        list.nothingFound = true;
+      } else {
+        list.nothingFound = false;
+      }
+    });
   };
 
+  list.removeItem = function(itemIndex) {
+    list.found.splice(itemIndex, 1);
+  };
 }
 
 MenuSearchService.$inject = ['$http']
 function MenuSearchService($http) {
   var service = this;
 
-  service.getAllMenuItems = function(searchTerm) {
+
+  service.getMatchedMenuItems = function(searchTerm) {
     return $http({
       method: "GET",
       url: "https://davids-restaurant.herokuapp.com/menu_items.json"
-    });
+    })
+    .then(function(result) {
+      var menuItems = result.data.menu_items;
+      var foundItems = [];
 
-    return response;
-  };
-
-  service.getMatchedMenuItems = function(searchTerm) {
-    var promise = service.getAllMenuItems();
-    var params = [];
-
-    promise.then(function(response) {
-      params = response.data.menu_items;
-      while (params.length--) {
-        if (!params[i].description.includes(searchTerm)) {
-          params.splice(i, 1);
+      for (var i = 0; i < menuItems.length; i++) {
+        if (searchTerm.length === 0) {
+          break;
+        }
+        if (menuItems[i].description.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1) {
+          foundItems.push(menuItems[i]);
         }
       }
-    })
-    .catch(function(error) {
-      console.log(error);
+      return foundItems;
     });
-
-    return promise;
   };
 }
 
